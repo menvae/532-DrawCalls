@@ -40,7 +40,7 @@ namespace osu.Framework.Graphics.Textures
         /// If the built-in GL mipmapping is replaced in the future (see custom generation logic in `{GL,Veldrid}Texture`),
         /// then this limit can be increased to 4096 again.
         /// </remarks>
-        private const int max_atlas_size = 1024;
+        public const int MAX_ATLAS_SIZE = 2048;
 
         /// <summary>
         /// Decides at what resolution multiple this <see cref="TextureStore"/> is providing sprites at.
@@ -61,7 +61,7 @@ namespace osu.Framework.Graphics.Textures
 
             if (useAtlas)
             {
-                int size = Math.Min(max_atlas_size, renderer.MaxTextureSize);
+                int size = Math.Min(MAX_ATLAS_SIZE, renderer.MaxTextureSize);
                 Atlas = new TextureAtlas(renderer, size, size, filteringMode: filteringMode, manualMipmaps: manualMipmaps);
             }
         }
@@ -115,7 +115,7 @@ namespace osu.Framework.Graphics.Textures
                 if ((tex = Atlas.Add(upload.Width, upload.Height, wrapModeS, wrapModeT)) == null)
                 {
                     Logger.Log(
-                        $"Texture requested ({upload.Width}x{upload.Height}) which exceeds {nameof(TextureStore)}'s atlas size ({max_atlas_size}x{max_atlas_size}) - bypassing atlasing. Consider using {nameof(LargeTextureStore)}.",
+                        $"Texture requested ({upload.Width}x{upload.Height}) which exceeds {nameof(TextureStore)}'s atlas size ({MAX_ATLAS_SIZE}x{MAX_ATLAS_SIZE}) - bypassing atlasing. Consider using {nameof(LargeTextureStore)}.",
                         LoggingTarget.Performance);
                 }
             }
