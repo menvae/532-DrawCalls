@@ -370,13 +370,13 @@ namespace osu.Framework.Graphics.Visualisation
             else if (IsHovered)
             {
                 background.Colour = FrameworkColour.BlueGreen;
-                text.Colour = Color4.White;
+                text.Colour = FrameworkColour.Text;
                 text2.Colour = FrameworkColour.YellowGreen;
             }
             else
             {
                 background.Colour = Color4.Transparent;
-                text.Colour = Color4.White;
+                text.Colour = FrameworkColour.Text;
                 text2.Colour = FrameworkColour.YellowGreen;
             }
         }

@@ -7,20 +7,27 @@ namespace osu.Framework.Graphics
 {
     public static class FrameworkColour
     {
-        public static Color4 Blue => new Color4(40, 65, 82, 255);
-        public static Color4 BlueDark => new Color4(22, 36, 44, 255);
+        public static Colour4 Background1 => getColor(.2f, .12f);
+        public static Colour4 Background2 => getColor(.2f, .18f);
+        public static Colour4 Background3 => getColor(.2f, .24f);
 
-        public static Color4 BlueGreen => new Color4(51, 88, 96, 255);
-        public static Color4 BlueGreenDark => new Color4(29, 49, 52, 255);
+        public static Colour4 Primary => getColor(1f, .7f);
+        public static Colour4 Secondary => getColor(.6f, .7f);
+        public static Colour4 Text => getColor(.1f, .98f);
 
-        public static Color4 Green => new Color4(57, 110, 102, 255);
-        public static Color4 GreenDark => new Color4(30, 57, 52, 255);
-        public static Color4 GreenDarker => new Color4(20, 33, 35, 255);
+        private static Colour4 getColor(float saturation, float lightness) => Colour4.FromHSL(220 / 360f, saturation, lightness);
 
-        public static Color4 YellowGreen => new Color4(128, 164, 108, 255);
-        public static Color4 YellowGreenDark => new Color4(69, 85, 57, 255);
+        public static Color4 GreenDarker => Background1;
 
-        public static Color4 Yellow => new Color4(250, 221, 114, 255);
-        public static Color4 YellowDark => new Color4(129, 112, 59, 255);
+        public static Color4 BlueGreenDark => Background2;
+        public static Color4 GreenDark => Background2;
+
+        public static Color4 Blue => Background3;
+        public static Color4 BlueDark => Background3;
+        public static Color4 BlueGreen => Background3;
+        public static Color4 Green => Background3;
+
+        public static Color4 Yellow => Primary;
+        public static Color4 YellowGreen => Secondary;
     }
 }
