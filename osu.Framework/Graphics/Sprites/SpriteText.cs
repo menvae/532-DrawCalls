@@ -232,6 +232,24 @@ namespace osu.Framework.Graphics.Sprites
             }
         }
 
+        private Vector2 glyphOffset = new Vector2(0, 0);
+
+        /// <summary>
+        /// The offset of the shadow displayed around the text. A shadow will only be displayed if the <see cref="Shadow"/> property is set to true.
+        /// </summary>
+        public Vector2 GlyphOffset
+        {
+            get => glyphOffset;
+            set
+            {
+                if (glyphOffset == value)
+                    return;
+
+                glyphOffset = value;
+                invalidate(true);
+            }
+        }
+
         private bool useFullGlyphHeight = true;
 
         /// <summary>

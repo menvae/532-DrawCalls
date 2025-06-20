@@ -22,6 +22,7 @@ namespace osu.Framework.Graphics.Sprites
             private bool shadow;
             private ColourInfo shadowColour;
             private Vector2 shadowOffset;
+            private Vector2 offset;
 
             private List<ScreenSpaceCharacterPart>? parts;
 
@@ -36,6 +37,7 @@ namespace osu.Framework.Graphics.Sprites
 
                 updateScreenSpaceCharacters();
                 shadow = Source.Shadow;
+                offset = Source.GlyphOffset;
 
                 if (shadow)
                 {
@@ -62,20 +64,26 @@ namespace osu.Framework.Graphics.Sprites
 
                 for (int i = 0; i < parts.Count; i++)
                 {
+                    var quad = parts[i].DrawQuad;
+                    quad = new Quad(
+                        quad.TopLeft + offset,
+                        quad.TopRight + offset,
+                        quad.BottomLeft + offset,
+                        quad.BottomRight + offset
+                    );
+
                     if (shadow)
                     {
-                        var shadowQuad = parts[i].DrawQuad;
-
                         renderer.DrawQuad(parts[i].Texture,
                             new Quad(
-                                shadowQuad.TopLeft + shadowOffset,
-                                shadowQuad.TopRight + shadowOffset,
-                                shadowQuad.BottomLeft + shadowOffset,
-                                shadowQuad.BottomRight + shadowOffset),
+                                quad.TopLeft + shadowOffset,
+                                quad.TopRight + shadowOffset,
+                                quad.BottomLeft + shadowOffset,
+                                quad.BottomRight + shadowOffset),
                             finalShadowColour, inflationPercentage: parts[i].InflationPercentage);
                     }
 
-                    renderer.DrawQuad(parts[i].Texture, parts[i].DrawQuad, DrawColourInfo.Colour, inflationPercentage: parts[i].InflationPercentage);
+                    renderer.DrawQuad(parts[i].Texture, quad, DrawColourInfo.Colour, inflationPercentage: parts[i].InflationPercentage);
                 }
 
                 UnbindTextureShader(renderer);
