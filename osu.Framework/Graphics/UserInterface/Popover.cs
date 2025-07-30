@@ -33,6 +33,8 @@ namespace osu.Framework.Graphics.UserInterface
 
         public override bool AcceptsFocus => State.Value == Visibility.Visible;
 
+        public virtual Vector2 Offset => Vector2.Zero;
+
         protected override bool OnKeyDown(KeyDownEvent e)
         {
             if (e.Key == Key.Escape)

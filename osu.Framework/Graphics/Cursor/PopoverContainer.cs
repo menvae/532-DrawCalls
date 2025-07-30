@@ -140,6 +140,7 @@ namespace osu.Framework.Graphics.Cursor
                 adjustment.Y = DrawHeight - popoverContentLocalQuad.BottomRight.Y;
 
             currentPopover.Position += adjustment;
+            currentPopover.Position += currentPopover.Offset;
 
             // Even if the popover was moved, the arrow should stay fixed in place and point at the target's centre.
             // In such a case, apply a counter-adjustment to the arrow position.
