@@ -347,3 +347,4 @@ inspectcode
 osu.Framework.NativeLibs/scripts/ffmpeg/*/
 osu.Framework.NativeLibs/scripts/ffmpeg/*.tar.gz
 
+xmldoc.xml
