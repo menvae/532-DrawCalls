@@ -19,10 +19,7 @@ namespace osu.Framework.Graphics.Cursor
             base.Update();
 
             var valid = FindTargets();
-            var current = CursorType.Arrow;
-
-            if (valid.Count > 0)
-                current = valid.Last().Cursor;
+            var current = valid.FirstOrDefault()?.Cursor ?? CursorType.Arrow;
 
             if (current == last)
                 return;
