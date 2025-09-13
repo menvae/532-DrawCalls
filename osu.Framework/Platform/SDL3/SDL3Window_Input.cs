@@ -646,6 +646,35 @@ namespace osu.Framework.Platform.SDL3
                 CursorStateBindable.Value &= ~CursorState.Confined;
         }
 
+        private readonly Dictionary<CursorType, nint> cursors = new();
+
+        public void ChangeCursor(CursorType type)
+        {
+            if (!cursors.TryGetValue(type, out nint cursor))
+            {
+                cursor = (nint)SDL_CreateSystemCursor(type switch
+                {
+                    CursorType.Arrow => SDL_SystemCursor.SDL_SYSTEM_CURSOR_DEFAULT,
+                    CursorType.TextSelection => SDL_SystemCursor.SDL_SYSTEM_CURSOR_TEXT,
+                    CursorType.Wait => SDL_SystemCursor.SDL_SYSTEM_CURSOR_WAIT,
+                    CursorType.Crosshair => SDL_SystemCursor.SDL_SYSTEM_CURSOR_CROSSHAIR,
+                    CursorType.WaitArrow => SDL_SystemCursor.SDL_SYSTEM_CURSOR_PROGRESS,
+                    CursorType.SizeNwSe => SDL_SystemCursor.SDL_SYSTEM_CURSOR_NWSE_RESIZE,
+                    CursorType.SizeNeSw => SDL_SystemCursor.SDL_SYSTEM_CURSOR_NESW_RESIZE,
+                    CursorType.SizeHorizontal => SDL_SystemCursor.SDL_SYSTEM_CURSOR_EW_RESIZE,
+                    CursorType.SizeVertical => SDL_SystemCursor.SDL_SYSTEM_CURSOR_NS_RESIZE,
+                    CursorType.SizeAll => SDL_SystemCursor.SDL_SYSTEM_CURSOR_MOVE,
+                    CursorType.Deny => SDL_SystemCursor.SDL_SYSTEM_CURSOR_NOT_ALLOWED,
+                    CursorType.Hand => SDL_SystemCursor.SDL_SYSTEM_CURSOR_POINTER,
+                    _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
+                });
+
+                cursors.Add(type, cursor);
+            }
+
+            SDL_SetCursor((SDL_Cursor*)cursor);
+        }
+
         #region Events
 
         /// <summary>

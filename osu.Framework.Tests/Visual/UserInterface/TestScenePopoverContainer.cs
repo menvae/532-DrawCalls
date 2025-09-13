@@ -641,7 +641,7 @@ namespace osu.Framework.Tests.Visual.UserInterface
             {
                 Masking = true;
                 BorderThickness = 4;
-                BorderColour = FrameworkColour.YellowGreenDark;
+                BorderColour = FrameworkColour.YellowGreen;
 
                 Children = new Drawable[]
                 {

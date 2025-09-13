@@ -218,6 +218,12 @@ namespace osu.Framework.Platform
         void CancelFlash();
 
         /// <summary>
+        /// Changes the mouse cursor to an os-provided cursor.
+        /// </summary>
+        /// <param name="type"></param>
+        void ChangeCursor(CursorType type);
+
+        /// <summary>
         /// Enable any system level timers that might dim or turn off the screen.
         /// </summary>
         void EnableScreenSuspension();
