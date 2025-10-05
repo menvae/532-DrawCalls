@@ -7,9 +7,12 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
+using JetBrains.Profiler.Api;
 using Microsoft.Extensions.ObjectPool;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
+using osu.Framework.Logging;
 using osu.Framework.Utils;
 using osu.Framework.Threading;
 using osu.Framework.Timing;
@@ -55,6 +58,9 @@ namespace osu.Framework.Statistics
         private double consumptionGCTotalPauseDuration;
 
         private readonly IBindable<bool> isActive;
+
+        public bool CaptureNextFrame { get; set; }
+        private bool capturing;
 
         internal readonly ThrottledFrameClock Clock;
 
@@ -153,6 +159,17 @@ namespace osu.Framework.Statistics
         /// </summary>
         public void NewFrame()
         {
+            if (CaptureNextFrame)
+            {
+                CaptureNextFrame = false;
+                capturing = true;
+
+                MeasureProfiler.StartCollectingData();
+
+                var features = MeasureProfiler.GetFeatures();
+                Logger.Log($"Profiler has features: {features}.", LoggingTarget.Performance, LogLevel.Debug);
+            }
+
             // Reset the counters we keep track of
             for (int i = 0; i < ActiveCounters.Length; ++i)
             {
@@ -207,6 +224,19 @@ namespace osu.Framework.Statistics
         public void EndFrame()
         {
             traceCollector?.EndFrame();
+
+            if (capturing)
+            {
+                capturing = false;
+                MeasureProfiler.StopCollectingData();
+
+                Task.Run(() =>
+                {
+                    Logger.Log("Saving profiler data.", LoggingTarget.Performance, LogLevel.Debug);
+                    MeasureProfiler.SaveData();
+                    Logger.Log("Finished saving profiling data.", LoggingTarget.Performance, LogLevel.Debug);
+                });
+            }
         }
 
         private void updateEnabledState()

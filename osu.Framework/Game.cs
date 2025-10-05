@@ -9,6 +9,7 @@ using osu.Framework.Allocation;
 using osu.Framework.Audio;
 using osu.Framework.Bindables;
 using osu.Framework.Configuration;
+using osu.Framework.Development;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Performance;
@@ -23,7 +24,9 @@ using osu.Framework.Input.StateChanges;
 using osu.Framework.IO.Stores;
 using osu.Framework.Localisation;
 using osu.Framework.Platform;
+using osu.Framework.Threading;
 using osuTK;
+using osuTK.Input;
 
 namespace osu.Framework
 {
@@ -475,6 +478,27 @@ namespace osu.Framework
 
         public virtual void OnReleased(KeyBindingReleaseEvent<PlatformAction> e)
         {
+        }
+
+        protected override bool OnKeyDown(KeyDownEvent e)
+        {
+            if (!DebugUtils.IsDebugBuild || !e.ControlPressed || !e.ShiftPressed || !e.AltPressed)
+                return false;
+
+            GameThread thread = e.Key switch
+            {
+                Key.Number1 => Host.UpdateThread,
+                Key.Number2 => Host.DrawThread,
+                Key.Number3 => Host.AudioThread,
+                Key.Number4 => Host.InputThread,
+                _ => null
+            };
+
+            if (thread?.Monitor is null)
+                return false;
+
+            thread.Monitor.CaptureNextFrame = true;
+            return true;
         }
 
         /// <summary>

@@ -19,6 +19,7 @@
     <PackageTags>osu game framework</PackageTags>
   </PropertyGroup>
   <ItemGroup Label="Package References">
+    <PackageReference Include="JetBrains.Profiler.Api" Version="1.4.10" />
     <PackageReference Include="managed-midi" Version="1.10.1" />
     <PackageReference Include="FFmpeg.AutoGen" Version="4.3.0.1" />
     <PackageReference Include="Microsoft.Extensions.ObjectPool" Version="5.0.11" />
