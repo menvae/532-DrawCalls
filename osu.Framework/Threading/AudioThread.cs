@@ -138,9 +138,10 @@ namespace osu.Framework.Threading
             if (!Bass.Init(deviceId, Flags: (DeviceInitFlags)128)) // 128 == BASS_DEVICE_REINIT
                 return false;
 
-            // Need to do more testing. Users reporting buffer underruns even with a large (20ms) buffer.
-            // Also playback latency improvements are not present across all users.
-            // attemptWasapiInitialisation();
+            // That this has not been mass-tested since https://github.com/ppy/osu-framework/pull/6651 and probably needs to be.
+            // Currently envvar gated for users to test at their own discretion.
+            if (FrameworkEnvironment.UseWasapi)
+                attemptWasapiInitialisation();
 
             initialised_devices.Add(deviceId);
             return true;
@@ -238,7 +239,7 @@ namespace osu.Framework.Threading
                 }
             });
 
-            bool initialised = BassWasapi.Init(wasapiDevice, Procedure: wasapiProcedure, Buffer: 0.02f, Period: 0.01f);
+            bool initialised = BassWasapi.Init(wasapiDevice, Procedure: wasapiProcedure, Flags: WasapiInitFlags.EventDriven | WasapiInitFlags.AutoFormat, Buffer: 0f, Period: float.Epsilon);
 
             if (!initialised)
                 return;
