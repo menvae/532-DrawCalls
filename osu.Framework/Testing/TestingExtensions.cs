@@ -12,8 +12,11 @@ namespace osu.Framework.Testing
         /// <summary>
         /// Find all children recursively of a specific type. As this is expensive and dangerous, it should only be used for testing purposes.
         /// </summary>
-        public static IEnumerable<T> ChildrenOfType<T>(this Drawable? drawable)
+        public static IEnumerable<T> ChildrenOfType<T>(this Drawable? drawable, bool checkAlpha = false)
         {
+            if (checkAlpha && drawable?.Alpha <= 0)
+                yield break;
+
             if (drawable is T match)
                 yield return match;
 
@@ -23,7 +26,7 @@ namespace osu.Framework.Testing
                 {
                     var child = composite.InternalChildren[i];
 
-                    foreach (var found in child.ChildrenOfType<T>())
+                    foreach (var found in child.ChildrenOfType<T>(checkAlpha))
                         yield return found;
                 }
             }
