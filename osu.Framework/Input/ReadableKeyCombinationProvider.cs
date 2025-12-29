@@ -154,52 +154,52 @@ namespace osu.Framework.Input
                     return "Caps";
 
                 case InputKey.Keypad0:
-                    return "Numpad0";
+                    return "Num0";
 
                 case InputKey.Keypad1:
-                    return "Numpad1";
+                    return "Num1";
 
                 case InputKey.Keypad2:
-                    return "Numpad2";
+                    return "Num2";
 
                 case InputKey.Keypad3:
-                    return "Numpad3";
+                    return "Num3";
 
                 case InputKey.Keypad4:
-                    return "Numpad4";
+                    return "Num4";
 
                 case InputKey.Keypad5:
-                    return "Numpad5";
+                    return "Num5";
 
                 case InputKey.Keypad6:
-                    return "Numpad6";
+                    return "Num6";
 
                 case InputKey.Keypad7:
-                    return "Numpad7";
+                    return "Num7";
 
                 case InputKey.Keypad8:
-                    return "Numpad8";
+                    return "Num8";
 
                 case InputKey.Keypad9:
-                    return "Numpad9";
+                    return "Num9";
 
                 case InputKey.KeypadDivide:
-                    return "NumpadDivide";
+                    return "NumDivide";
 
                 case InputKey.KeypadMultiply:
-                    return "NumpadMultiply";
+                    return "NumMultiply";
 
                 case InputKey.KeypadMinus:
-                    return "NumpadMinus";
+                    return "NumMinus";
 
                 case InputKey.KeypadPlus:
-                    return "NumpadPlus";
+                    return "NumPlus";
 
                 case InputKey.KeypadDecimal:
-                    return "NumpadDecimal";
+                    return "NumDecimal";
 
                 case InputKey.KeypadEnter:
-                    return "NumpadEnter";
+                    return "NumEnter";
 
                 case InputKey.Number0:
                     return "0";

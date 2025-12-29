@@ -124,67 +124,67 @@ namespace osu.Framework.Platform.SDL3
                     return true;
 
                 case SDL_Keycode.SDLK_KP_DIVIDE:
-                    name = "NumpadDivide";
+                    name = "NumDivide";
                     return true;
 
                 case SDL_Keycode.SDLK_KP_MULTIPLY:
-                    name = "NumpadMultiply";
+                    name = "NumMultiply";
                     return true;
 
                 case SDL_Keycode.SDLK_KP_MINUS:
-                    name = "NumpadMinus";
+                    name = "NumMinus";
                     return true;
 
                 case SDL_Keycode.SDLK_KP_PLUS:
-                    name = "NumpadPlus";
+                    name = "NumPlus";
                     return true;
 
                 case SDL_Keycode.SDLK_KP_ENTER:
-                    name = "NumpadEnter";
+                    name = "NumEnter";
                     return true;
 
                 case SDL_Keycode.SDLK_KP_PERIOD:
-                    name = "NumpadDecimal";
+                    name = "NumDecimal";
                     return true;
 
                 case SDL_Keycode.SDLK_KP_0:
-                    name = "Numpad0";
+                    name = "Num0";
                     return true;
 
                 case SDL_Keycode.SDLK_KP_1:
-                    name = "Numpad1";
+                    name = "Num1";
                     return true;
 
                 case SDL_Keycode.SDLK_KP_2:
-                    name = "Numpad2";
+                    name = "Num2";
                     return true;
 
                 case SDL_Keycode.SDLK_KP_3:
-                    name = "Numpad3";
+                    name = "Num3";
                     return true;
 
                 case SDL_Keycode.SDLK_KP_4:
-                    name = "Numpad4";
+                    name = "Num4";
                     return true;
 
                 case SDL_Keycode.SDLK_KP_5:
-                    name = "Numpad5";
+                    name = "Num5";
                     return true;
 
                 case SDL_Keycode.SDLK_KP_6:
-                    name = "Numpad6";
+                    name = "Num6";
                     return true;
 
                 case SDL_Keycode.SDLK_KP_7:
-                    name = "Numpad7";
+                    name = "Num7";
                     return true;
 
                 case SDL_Keycode.SDLK_KP_8:
-                    name = "Numpad8";
+                    name = "Num8";
                     return true;
 
                 case SDL_Keycode.SDLK_KP_9:
-                    name = "Numpad9";
+                    name = "Num9";
                     return true;
 
                 case SDL_Keycode.SDLK_LCTRL:
