@@ -5,6 +5,7 @@ namespace osu.Framework.Platform
 {
     public enum CursorType
     {
+        Ignore = -1,
         Arrow = 0,
         TextSelection = 1,
         Wait = 2,
