@@ -80,6 +80,17 @@ namespace osu.Framework.Graphics
             AlphaEquation = BlendingEquation.Add,
         };
 
+        // we can't really get an accurate diffrence blend for alphas with the current blending params, this is a close approximation
+        public static BlendingParameters Difference => new BlendingParameters
+        {
+            Source = BlendingType.One,
+            Destination = BlendingType.One,
+            SourceAlpha = BlendingType.Zero,
+            DestinationAlpha = BlendingType.One,
+            RGBEquation = BlendingEquation.Subtract,
+            AlphaEquation = BlendingEquation.Add,
+        };
+
         public static BlendingParameters Additive => new BlendingParameters
         {
             Source = BlendingType.SrcAlpha,
@@ -90,7 +101,64 @@ namespace osu.Framework.Graphics
             AlphaEquation = BlendingEquation.Add,
         };
 
+        public static BlendingParameters Subtractive => new BlendingParameters
+        {
+            Source = BlendingType.One,
+            Destination = BlendingType.One,
+            SourceAlpha = BlendingType.Zero,
+            DestinationAlpha = BlendingType.One,
+            RGBEquation = BlendingEquation.ReverseSubtract,
+            AlphaEquation = BlendingEquation.Add,
+        };
+
+        public static BlendingParameters Screen => new BlendingParameters
+        {
+            Source = BlendingType.One,
+            Destination = BlendingType.OneMinusSrcColor,
+            SourceAlpha = BlendingType.One,
+            DestinationAlpha = BlendingType.OneMinusSrcAlpha,
+            RGBEquation = BlendingEquation.Add,
+            AlphaEquation = BlendingEquation.Add,
+        };
+
+        public static BlendingParameters Multiplicative => new BlendingParameters
+        {
+            Source = BlendingType.DstColor,
+            Destination = BlendingType.OneMinusSrcAlpha,
+            SourceAlpha = BlendingType.One,
+            DestinationAlpha = BlendingType.OneMinusSrcAlpha,
+            RGBEquation = BlendingEquation.Add,
+            AlphaEquation = BlendingEquation.Add,
+        };
+
+        public static BlendingParameters Premultiplied => new BlendingParameters
+        {
+            Source = BlendingType.One,
+            Destination = BlendingType.OneMinusSrcAlpha,
+            SourceAlpha = BlendingType.One,
+            DestinationAlpha = BlendingType.OneMinusSrcAlpha,
+            RGBEquation = BlendingEquation.Add,
+            AlphaEquation = BlendingEquation.Add,
+        };
+
         #endregion
+
+        public static BlendingParameters GetDefaultParameters(DefaultBlendingParameters blendingParameterType)
+        {
+            return blendingParameterType switch
+            {
+                DefaultBlendingParameters.None => None,
+                DefaultBlendingParameters.Inherit => Inherit,
+                DefaultBlendingParameters.Mix => Mixture,
+                DefaultBlendingParameters.Difference => Difference,
+                DefaultBlendingParameters.Add => Additive,
+                DefaultBlendingParameters.Subtract => Subtractive,
+                DefaultBlendingParameters.Screen => Screen,
+                DefaultBlendingParameters.Multiply => Multiplicative,
+                DefaultBlendingParameters.Premultiplied => Premultiplied,
+                _ => throw new ArgumentOutOfRangeException(nameof(blendingParameterType), blendingParameterType, null),
+            };
+        }
 
         /// <summary>
         /// Copy all properties that are marked as inherited from a parent <see cref="BlendingParameters"/> object.
@@ -238,7 +306,7 @@ namespace osu.Framework.Graphics
                     return BlendingFactorSrc.OneMinusDstColor;
 
                 case BlendingType.OneMinusSrcAlpha:
-                    return BlendingFactorSrc.OneMinusSrcColor;
+                    return BlendingFactorSrc.OneMinusSrcAlpha;
 
                 case BlendingType.SrcAlpha:
                     return BlendingFactorSrc.SrcAlpha;

@@ -13,6 +13,7 @@ using osu.Framework.Logging;
 using osuTK.Graphics.ES30;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 using StbiSharp;
 
 namespace osu.Framework.Graphics.Textures
@@ -98,8 +99,33 @@ namespace osu.Framework.Graphics.Textures
 
                 Logger.Log($"Texture could not be loaded via STB; falling back to ImageSharp: {e.Message}");
                 stream.Position = initialPos;
-                return Image.Load<TPixel>(stream);
+
+                bool isWebP = TextureUpload.isWebP(stream);
+                var image = Image.Load<TPixel>(stream);
+
+                // a stupid fix for heavily compressed webp images with visible artifacts but it's efficient and works
+                if (isWebP)
+                    image.Mutate(x => x.BoxBlur(0));
+
+                return image;
             }
+        }
+
+        private static bool isWebP(Stream stream)
+        {
+            long initialPos = stream.Position;
+
+            if (stream.Length < 12)
+                return false;
+
+            Span<byte> header = stackalloc byte[12];
+            stream.ReadExactly(header);
+            stream.Position = initialPos;
+
+            return header[0] == 'R' && header[1] == 'I' &&
+                header[2] == 'F' && header[3] == 'F' &&
+                header[8] == 'W' && header[9] == 'E' &&
+                header[10] == 'B' && header[11] == 'P';
         }
 
         /// <summary>
