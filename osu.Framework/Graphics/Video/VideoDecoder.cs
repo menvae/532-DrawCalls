@@ -385,11 +385,10 @@ namespace osu.Framework.Graphics.Video
             if (stream == null)
                 return;
 
-            var codecParams = *stream->codecpar;
             var targetHwDecoders = hwDecodingAllowed ? TargetHardwareVideoDecoders.Value : HardwareVideoDecoder.None;
             bool openSuccessful = false;
 
-            foreach (var (decoder, hwDeviceType) in GetAvailableDecoders(formatContext->iformat, codecParams.codec_id, targetHwDecoders))
+            foreach (var (decoder, hwDeviceType) in GetAvailableDecoders(formatContext->iformat, stream->codecpar->codec_id, targetHwDecoders))
             {
                 // free context in case it was allocated in a previous iteration or recreate call.
                 if (codecContext != null)
@@ -407,7 +406,7 @@ namespace osu.Framework.Graphics.Video
                     continue;
                 }
 
-                int paramCopyResult = ffmpeg.avcodec_parameters_to_context(codecContext, &codecParams);
+                int paramCopyResult = ffmpeg.avcodec_parameters_to_context(codecContext, stream->codecpar);
 
                 if (paramCopyResult < 0)
                 {
@@ -444,7 +443,7 @@ namespace osu.Framework.Graphics.Video
             }
 
             if (!openSuccessful)
-                throw new InvalidOperationException($"No usable decoder found for codec ID {codecParams.codec_id}");
+                throw new InvalidOperationException($"No usable decoder found for codec ID {stream->codecpar->codec_id}");
         }
 
         private void decodingLoop(CancellationToken cancellationToken)
