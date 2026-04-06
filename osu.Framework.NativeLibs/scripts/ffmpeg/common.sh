@@ -19,15 +19,21 @@ FFMPEG_FLAGS=(
 
     # Legacy video formats
     --enable-demuxer='avi,flv,asf'
+    --enable-muxer='avi,flv,asf'
     --enable-parser='mpeg4video'
     --enable-decoder='flv,msmpeg4v1,msmpeg4v2,msmpeg4v3,mpeg4,vp6,vp6f,wmv2'
-
+    --enable-encoder='flv,mpeg4'
     # Modern video formats
     --enable-demuxer='mov,matroska' # mov = mp4, matroska = mkv & webm
+    --enable-muxer='mov,matroska'
     --enable-parser='h264,hevc,vp8,vp9'
     --enable-decoder='h264,hevc,vp8,vp9'
+    --enable-encoder='libx264,libx265,vp8,vp9'
     --enable-protocol=pipe
 )
+
+export PKG_CONFIG_PATH=/usr/x86_64-w64-mingw32/lib/pkgconfig
+export PKG_CONFIG_LIBDIR=/usr/x86_64-w64-mingw32/lib/pkgconfig
 
 function prep_ffmpeg() {
     FFMPEG_FLAGS+=(
