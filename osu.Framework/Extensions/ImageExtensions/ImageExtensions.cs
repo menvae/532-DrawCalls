@@ -2,9 +2,12 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System.Buffers;
+using System.IO;
+using NetVips;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Advanced;
 using SixLabors.ImageSharp.PixelFormats;
+using Image = NetVips.Image;
 
 namespace osu.Framework.Extensions.ImageExtensions
 {
@@ -20,9 +23,8 @@ namespace osu.Framework.Extensions.ImageExtensions
         /// <param name="image">The <see cref="Image{TPixel}"/>.</param>
         /// <typeparam name="TPixel">The type of pixels in <paramref name="image"/>.</typeparam>
         /// <returns>The <see cref="ReadOnlyPixelSpan{TPixel}"/>.</returns>
-        public static ReadOnlyPixelSpan<TPixel> CreateReadOnlyPixelSpan<TPixel>(this Image<TPixel> image)
-            where TPixel : unmanaged, IPixel<TPixel>
-            => new ReadOnlyPixelSpan<TPixel>(image);
+        public static ReadOnlyPixelSpan CreateReadOnlyPixelSpan(this Image image)
+            => new ReadOnlyPixelSpan(image);
 
         /// <summary>
         /// Creates a contiguous and read-only memory from the pixels of an <see cref="Image{TPixel}"/>.
@@ -34,9 +36,8 @@ namespace osu.Framework.Extensions.ImageExtensions
         /// <param name="image">The <see cref="Image{TPixel}"/>.</param>
         /// <typeparam name="TPixel">The type of pixels in <paramref name="image"/>.</typeparam>
         /// <returns>The <see cref="ReadOnlyPixelMemory{TPixel}"/>.</returns>
-        public static ReadOnlyPixelMemory<TPixel> CreateReadOnlyPixelMemory<TPixel>(this Image<TPixel> image)
-            where TPixel : unmanaged, IPixel<TPixel>
-            => new ReadOnlyPixelMemory<TPixel>(image);
+        public static ReadOnlyPixelMemory CreateReadOnlyPixelMemory(this Image image)
+            => new ReadOnlyPixelMemory(image);
 
         /// <summary>
         /// Creates a new contiguous memory buffer from the pixels in an <see cref="Image{TPixel}"/>.
@@ -47,7 +48,7 @@ namespace osu.Framework.Extensions.ImageExtensions
         /// <param name="image">The <see cref="Image{TPixel}"/>.</param>
         /// <typeparam name="TPixel">The type of pixels in <paramref name="image"/>.</typeparam>
         /// <returns>The <see cref="IMemoryOwner{T}"/>, containing the contiguous pixel memory.</returns>
-        internal static IMemoryOwner<TPixel> CreateContiguousMemory<TPixel>(this Image<TPixel> image)
+        internal static IMemoryOwner<TPixel> CreateContiguousMemory<TPixel>(this SixLabors.ImageSharp.Image<TPixel> image)
             where TPixel : unmanaged, IPixel<TPixel>
         {
             var allocatedOwner = SixLabors.ImageSharp.Configuration.Default.MemoryAllocator.Allocate<TPixel>(image.Width * image.Height);
@@ -57,6 +58,50 @@ namespace osu.Framework.Extensions.ImageExtensions
                 image.DangerousGetPixelRowMemory(r).CopyTo(allocatedMemory.Slice(r * image.Width));
 
             return allocatedOwner;
+        }
+
+        /// <summary>
+        /// Convert an ImageSharp image to a NetVips Image.
+        /// </summary>
+        public static NetVips.Image ToVips(this SixLabors.ImageSharp.Image source)
+        {
+            if (source is SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32> rgbaImage)
+            {
+                byte[] pixels = new byte[rgbaImage.Width * rgbaImage.Height * 4];
+                rgbaImage.CopyPixelDataTo(pixels);
+
+                return Image.NewFromMemory(
+                    pixels,
+                    rgbaImage.Width,
+                    rgbaImage.Height,
+                    4,
+                    Enums.BandFormat.Uchar
+                ).Copy(interpretation: Enums.Interpretation.Srgb);
+            }
+
+            using var ms = new MemoryStream();
+            source.SaveAsPng(ms);
+            return Image.NewFromBuffer(ms.ToArray()).Copy(interpretation: Enums.Interpretation.Srgb);
+        }
+
+        /// <summary>
+        /// Convert a NetVips Image to an ImageSharp image.
+        /// </summary>
+        public static SixLabors.ImageSharp.Image ToImageSharp(this NetVips.Image source)
+        {
+            byte[] buffer = source.TiffsaveBuffer();
+
+            return SixLabors.ImageSharp.Image.Load(buffer);
+        }
+
+        /// <summary>
+        /// Convert a NetVips Image directly to a specific ImageSharp pixel type.
+        /// </summary>
+        public static SixLabors.ImageSharp.Image<TPixel> ToImageSharp<TPixel>(this NetVips.Image source)
+            where TPixel : unmanaged, SixLabors.ImageSharp.PixelFormats.IPixel<TPixel>
+        {
+            byte[] buffer = source.TiffsaveBuffer();
+            return SixLabors.ImageSharp.Image.Load<TPixel>(buffer);
         }
     }
 }

@@ -7,15 +7,14 @@ using System;
 using System.Buffers;
 using osu.Framework.Graphics.Primitives;
 using osuTK.Graphics.ES30;
-using SixLabors.ImageSharp.PixelFormats;
 
 namespace osu.Framework.Graphics.Textures
 {
     public class ArrayPoolTextureUpload : ITextureUpload
     {
-        private readonly ArrayPool<Rgba32> arrayPool;
+        private readonly ArrayPool<byte> arrayPool;
 
-        private readonly Rgba32[] data;
+        private readonly byte[] data;
 
         /// <summary>
         /// Create an empty raw texture with an efficient shared memory backing.
@@ -23,9 +22,9 @@ namespace osu.Framework.Graphics.Textures
         /// <param name="width">The width of the texture.</param>
         /// <param name="height">The height of the texture.</param>
         /// <param name="arrayPool">The source pool to retrieve memory from. Shared default is used if null.</param>
-        public ArrayPoolTextureUpload(int width, int height, ArrayPool<Rgba32> arrayPool = null)
+        public ArrayPoolTextureUpload(int width, int height, ArrayPool<byte> arrayPool = null)
         {
-            this.arrayPool = arrayPool ?? ArrayPool<Rgba32>.Shared;
+            this.arrayPool = arrayPool ?? ArrayPool<byte>.Shared;
             data = this.arrayPool.Rent(width * height);
         }
 
@@ -34,9 +33,9 @@ namespace osu.Framework.Graphics.Textures
             arrayPool.Return(data);
         }
 
-        public Span<Rgba32> RawData => data;
+        public Span<byte> RawData => data;
 
-        public ReadOnlySpan<Rgba32> Data => data;
+        public ReadOnlySpan<byte> Data => data;
 
         public int Level { get; set; }
 

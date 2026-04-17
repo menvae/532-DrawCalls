@@ -5,8 +5,8 @@
 
 using System;
 using System.Collections.Generic;
-using System.Numerics;
 using System.Runtime.InteropServices;
+using NetVips;
 using osu.Framework.Development;
 using osu.Framework.Extensions.ImageExtensions;
 using osu.Framework.Graphics.Primitives;
@@ -16,8 +16,7 @@ using osu.Framework.Logging;
 using osu.Framework.Platform;
 using osuTK.Graphics;
 using osuTK.Graphics.ES30;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
+using Image = NetVips.Image;
 
 namespace osu.Framework.Graphics.OpenGL.Textures
 {
@@ -213,7 +212,7 @@ namespace osu.Framework.Graphics.OpenGL.Textures
             {
                 using (upload)
                 {
-                    fixed (Rgba32* ptr = upload.Data)
+                    fixed (byte* ptr = upload.Data)
                         DoUpload(upload, (IntPtr)ptr);
 
                     uploadedRegions.Add(upload.Bounds);
@@ -476,12 +475,10 @@ namespace osu.Framework.Graphics.OpenGL.Textures
             if (initialisationColour == null)
                 return;
 
-            var rgbaColour = new Rgba32(new Vector4(initialisationColour.Value.R, initialisationColour.Value.G, initialisationColour.Value.B, initialisationColour.Value.A));
-
             // it is faster to initialise without a background specification if transparent black is all that's required.
             using var image = initialisationColour == null
-                ? new Image<Rgba32>(width, height)
-                : new Image<Rgba32>(width, height, rgbaColour);
+                ? Image.Black(width, height)
+                : (Image.Black(width, height) + new double[] { 255, 128, 0 }).Cast(Enums.BandFormat.Uchar);
 
             using (var pixels = image.CreateReadOnlyPixelSpan())
             {

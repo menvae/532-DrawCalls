@@ -3,18 +3,14 @@
 
 using System;
 using System.Buffers;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using osu.Framework.Allocation;
 using osu.Framework.Logging;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats;
 using static SDL.SDL3;
+using Image = NetVips.Image;
 
 namespace osu.Framework.Platform.SDL3
 {
@@ -25,16 +21,19 @@ namespace osu.Framework.Platform.SDL3
         /// </summary>
         // It's possible for a format to not have a registered decoder, but all default formats will have one:
         // https://github.com/SixLabors/ImageSharp/discussions/1353#discussioncomment-9142056
-        private static IEnumerable<string> supportedImageMimeTypes => SixLabors.ImageSharp.Configuration.Default.ImageFormats.SelectMany(f => f.MimeTypes);
-
-        /// <summary>
-        /// Format used for encoding (saving) images to the clipboard.
-        /// </summary>
-        private readonly IImageFormat imageFormat;
-
-        public SDL3Clipboard(IImageFormat imageFormat)
+        private static readonly string[] supportedImageMimeTypes =
         {
-            this.imageFormat = imageFormat;
+            "image/png",
+            "image/jpeg",
+            "image/webp",
+            "image/tiff"
+        };
+
+        private readonly string outputMimeType;
+
+        public SDL3Clipboard(string outputMimeType = "image/png")
+        {
+            this.outputMimeType = outputMimeType;
         }
 
         // SDL cannot differentiate between string.Empty and no text (eg. empty clipboard or an image)
@@ -44,13 +43,13 @@ namespace osu.Framework.Platform.SDL3
 
         public override void SetText(string text) => SDL_SetClipboardText(text).LogErrorIfFailed();
 
-        public override Image<TPixel>? GetImage<TPixel>()
+        public override Image? GetImage()
         {
             foreach (string mimeType in supportedImageMimeTypes)
             {
-                if (tryGetData(mimeType, Image.Load<TPixel>, out var image))
+                if (tryGetData(mimeType, span => Image.NewFromBuffer(span.ToArray()), out var image))
                 {
-                    Logger.Log($"Decoded {mimeType} from clipboard.");
+                    Logger.Log($"Decoded {mimeType} from clipboard via NetVips.");
                     return image;
                 }
             }
@@ -60,21 +59,36 @@ namespace osu.Framework.Platform.SDL3
 
         public override bool SetImage(Image image)
         {
-            ReadOnlyMemory<byte> memory;
+            byte[] buffer = encodeImage(image, outputMimeType);
+
+            if (buffer.Length == 0)
+                return false;
 
             // we can't save the image in the callback as the caller owns the image and might dispose it from under us.
+            ReadOnlyMemory<byte> memory = new ReadOnlyMemory<byte>(buffer);
 
-            using (var stream = new MemoryStream())
+            return trySetData(outputMimeType, () => memory);
+        }
+
+        private byte[] encodeImage(Image image, string mimeType)
+        {
+            try
             {
-                image.Save(stream, imageFormat);
-
-                // The buffer is allowed to escape the lifetime of the MemoryStream.
-                // https://learn.microsoft.com/en-us/dotnet/api/system.io.memorystream.getbuffer?view=net-8.0
-                // "This method works when the memory stream is closed."
-                memory = new ReadOnlyMemory<byte>(stream.GetBuffer(), 0, (int)stream.Length);
+                // TODO: make a helper method
+                return mimeType switch
+                {
+                    "image/png" => image.PngsaveBuffer(),
+                    "image/jpeg" => image.JpegsaveBuffer(),
+                    "image/webp" => image.WebpsaveBuffer(),
+                    "image/tiff" => image.TiffsaveBuffer(),
+                    _ => image.PngsaveBuffer()
+                };
             }
-
-            return trySetData(imageFormat.DefaultMimeType, () => memory);
+            catch (Exception e)
+            {
+                Logger.Error(e, $"NetVips failed to encode image, mimetipe: {mimeType}");
+                return Array.Empty<byte>();
+            }
         }
 
         /// <summary>

@@ -2,13 +2,13 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
+using NetVips;
 using osu.Framework.Allocation;
 using osu.Framework.Caching;
 using osu.Framework.Graphics.Rendering;
 using osu.Framework.Graphics.Textures;
 using osuTK.Graphics;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
+using Image = NetVips.Image;
 
 namespace osu.Framework.Graphics.Lines
 {
@@ -51,18 +51,29 @@ namespace osu.Framework.Graphics.Lines
                 return;
 
             int textureWidth = (int)Math.Max(PathRadius, 1) * 2;
+            const double aa_portion = 0.02;
 
-            //initialise background
-            var raw = new Image<Rgba32>(textureWidth, 1);
+            using var ramp = Image.Identity(textureWidth);
+            using var progress = ramp.Linear(new[] { 1.0 / (textureWidth - 1) }, new[] { 0.0 });
 
-            const float aa_portion = 0.02f;
+            using var lut = createColorLut(textureWidth);
+            using var lutIndex = progress.Linear(new[] { (double)textureWidth - 1 }, new[] { 0.0 });
+            var raw = lutIndex.Maplut(lut);
 
-            for (int i = 0; i < textureWidth; i++)
+            using var aaMask = progress.Linear(new[] { 1.0 / aa_portion }, new[] { 0.0 });
+
+            using var one = progress.NewFromImage(1.0);
+            using var condition = aaMask.Relational(one, Enums.OperationRelational.More);
+
+            using var clampedMask = condition.Ifthenelse(1.0, aaMask);
+
+            if (raw.Bands == 4)
             {
-                float progress = (float)i / (textureWidth - 1);
-
-                var colour = ColourAt(progress);
-                raw[i, 0] = new Rgba32(colour.R, colour.G, colour.B, colour.A * Math.Min(progress / aa_portion, 1));
+                using var alpha = raw[3].Multiply(clampedMask);
+                using var colorBands = raw.ExtractBand(0, 3);
+                var merged = colorBands.Bandjoin(alpha);
+                raw.Dispose();
+                raw = merged;
             }
 
             if (Texture?.Width == textureWidth)
@@ -77,6 +88,24 @@ namespace osu.Framework.Graphics.Lines
             }
 
             textureCache.Validate();
+        }
+
+        private Image createColorLut(int width)
+        {
+            var pixels = new byte[width * 4];
+
+            for (int i = 0; i < width; i++)
+            {
+                float progress = (float)i / (width - 1);
+                var c = ColourAt(progress);
+
+                pixels[i * 4 + 0] = (byte)c.R;
+                pixels[i * 4 + 1] = (byte)c.G;
+                pixels[i * 4 + 2] = (byte)c.B;
+                pixels[i * 4 + 3] = (byte)c.A;
+            }
+
+            return Image.NewFromMemory(pixels, width, 1, 4, Enums.BandFormat.Uchar);
         }
 
         internal override DrawNode GenerateDrawNodeSubtree(ulong frame, int treeIndex, bool forceNewDrawNode)

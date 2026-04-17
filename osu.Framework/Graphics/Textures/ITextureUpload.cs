@@ -4,7 +4,6 @@
 using System;
 using osu.Framework.Graphics.Primitives;
 using osuTK.Graphics.ES30;
-using SixLabors.ImageSharp.PixelFormats;
 
 namespace osu.Framework.Graphics.Textures
 {
@@ -13,7 +12,7 @@ namespace osu.Framework.Graphics.Textures
         /// <summary>
         /// The raw data to be uploaded.
         /// </summary>
-        ReadOnlySpan<Rgba32> Data { get; }
+        ReadOnlySpan<byte> Data { get; }
 
         /// <summary>
         /// The target mipmap level to upload into.

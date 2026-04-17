@@ -2,10 +2,9 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
-using System.IO;
 using osu.Framework.Platform.Apple.Native;
 using osu.Framework.Platform.MacOS.Native;
-using SixLabors.ImageSharp;
+using Image = NetVips.Image;
 
 namespace osu.Framework.Platform.MacOS
 {
@@ -19,25 +18,24 @@ namespace osu.Framework.Platform.MacOS
             return nsString.ToString();
         }
 
-        public override Image<TPixel>? GetImage<TPixel>()
+        public override Image? GetImage()
         {
             var nsImage = new NSImage(getFromPasteboard(Class.Get("NSImage")));
             if (nsImage.Handle == IntPtr.Zero)
                 return null;
 
-            return Image.Load<TPixel>(nsImage.TiffRepresentation.ToBytes());
+            return Image.NewFromBuffer(nsImage.TiffRepresentation.ToBytes());
         }
 
         public override void SetText(string text) => setToPasteboard(NSString.FromString(text).Handle);
 
-        public override bool SetImage(Image image)
+        public override bool SetImage(NetVips.Image image)
         {
-            using var stream = new MemoryStream();
-            image.SaveAsTiff(stream);
+            byte[] buff = image.TiffsaveBuffer();
 
             using (NSAutoreleasePool.Init())
             {
-                var nsData = NSData.FromBytes(stream.ToArray());
+                var nsData = NSData.FromBytes(buff);
                 using var nsImage = NSImage.InitWithData(nsData);
                 return setToPasteboard(nsImage.Handle);
             }

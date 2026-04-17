@@ -7,18 +7,17 @@ using System;
 using System.Buffers;
 using osu.Framework.Graphics.Primitives;
 using osuTK.Graphics.ES30;
-using SixLabors.ImageSharp.Memory;
-using SixLabors.ImageSharp.PixelFormats;
 
 namespace osu.Framework.Graphics.Textures
 {
     public class MemoryAllocatorTextureUpload : ITextureUpload
     {
-        public Span<Rgba32> RawData => memoryOwner.Memory.Span;
+        public Span<byte> RawData => memoryOwner.Memory.Span[..dataLength];
 
-        public ReadOnlySpan<Rgba32> Data => RawData;
+        public ReadOnlySpan<byte> Data => RawData;
 
-        private readonly IMemoryOwner<Rgba32> memoryOwner;
+        private readonly IMemoryOwner<byte> memoryOwner;
+        private readonly int dataLength;
 
         public int Level { get; set; }
 
@@ -32,9 +31,10 @@ namespace osu.Framework.Graphics.Textures
         /// <param name="width">The width of the texture.</param>
         /// <param name="height">The height of the texture.</param>
         /// <param name="memoryAllocator">The source to retrieve memory from. Shared default is used if null.</param>
-        public MemoryAllocatorTextureUpload(int width, int height, MemoryAllocator memoryAllocator = null)
+        public MemoryAllocatorTextureUpload(int width, int height, MemoryPool<byte> memoryPool = null)
         {
-            memoryOwner = (memoryAllocator ?? SixLabors.ImageSharp.Configuration.Default.MemoryAllocator).Allocate<Rgba32>(width * height);
+            dataLength = width * height * 4;
+            memoryOwner = (memoryPool ?? MemoryPool<byte>.Shared).Rent(dataLength);
         }
 
         #region IDisposable Support

@@ -10,8 +10,7 @@ using osu.Framework.Graphics.Rendering.Vertices;
 using osu.Framework.Platform;
 using osu.Framework.Threading;
 using osuTK.Graphics;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp;
+using Image = NetVips.Image;
 
 namespace osu.Framework.Graphics.Rendering
 {
@@ -348,12 +347,12 @@ namespace osu.Framework.Graphics.Rendering
         /// <summary>
         /// Returns an image containing the current content of the backbuffer, i.e. takes a screenshot.
         /// </summary>
-        protected internal Image<Rgba32> TakeScreenshot();
+        protected internal Image TakeScreenshot();
 
         /// <summary>
         /// Returns an image containing the content of a framebuffer.
         /// </summary>
-        Image<Rgba32>? ExtractFrameBufferData(IFrameBuffer frameBuffer);
+        Image? ExtractFrameBufferData(IFrameBuffer frameBuffer);
 
         /// <summary>
         /// Creates a new <see cref="IShaderPart"/>.

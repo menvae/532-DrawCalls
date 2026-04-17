@@ -7,7 +7,7 @@ using osu.Framework.IO.Stores;
 using osu.Framework.Platform.Apple;
 using osu.Framework.Platform.Apple.Native;
 using osu.Framework.Platform.MacOS.Native;
-using SixLabors.ImageSharp;
+using Image = NetVips.Image;
 
 namespace osu.Framework.Platform.MacOS
 {
@@ -18,7 +18,7 @@ namespace osu.Framework.Platform.MacOS
         {
         }
 
-        protected override unsafe Image<TPixel> ImageFromStream<TPixel>(Stream stream)
+        protected override unsafe Image ImageFromStream(Stream stream)
         {
             using (NSAutoreleasePool.Init())
             {
@@ -33,7 +33,7 @@ namespace osu.Framework.Platform.MacOS
                     throw new ArgumentException($"{nameof(Image)} could not be created from {nameof(stream)}.");
 
                 var cgImage = nsImage.CGImage;
-                return ImageFromCGImage<TPixel>(cgImage);
+                return ImageFromCGImage(cgImage);
             }
         }
     }

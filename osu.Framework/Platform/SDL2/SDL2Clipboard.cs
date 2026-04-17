@@ -1,8 +1,8 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using SixLabors.ImageSharp;
 using static SDL2.SDL;
+using Image = NetVips.Image;
 
 namespace osu.Framework.Platform.SDL2
 {
@@ -15,7 +15,7 @@ namespace osu.Framework.Platform.SDL2
 
         public override void SetText(string text) => SDL_SetClipboardText(text);
 
-        public override Image<TPixel>? GetImage<TPixel>()
+        public override Image? GetImage()
         {
             return null;
         }

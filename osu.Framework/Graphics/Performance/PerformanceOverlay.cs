@@ -18,7 +18,6 @@ using osu.Framework.Threading;
 using osuTK;
 using osuTK.Graphics;
 using osuTK.Input;
-using SixLabors.ImageSharp.PixelFormats;
 
 namespace osu.Framework.Graphics.Performance
 {
@@ -256,14 +255,14 @@ namespace osu.Framework.Graphics.Performance
             });
         }
 
-        private ArrayPool<Rgba32> createUploadPool()
+        private ArrayPool<byte> createUploadPool()
         {
             // bucket size should be enough to allow some overhead when running multi-threaded with draw at 60hz.
             const int max_expected_thread_update_rate = 2000;
 
             int bucketSize = host.Threads.Count() * (max_expected_thread_update_rate / 60);
 
-            return ArrayPool<Rgba32>.Create(FrameStatisticsDisplay.HEIGHT, bucketSize);
+            return ArrayPool<byte>.Create(FrameStatisticsDisplay.HEIGHT, bucketSize);
         }
     }
 

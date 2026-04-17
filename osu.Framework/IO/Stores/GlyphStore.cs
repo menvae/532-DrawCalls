@@ -12,14 +12,13 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
+using NetVips;
 using osu.Framework.Extensions;
 using osu.Framework.Graphics.Textures;
 using osu.Framework.Logging;
 using osu.Framework.Text;
 using SharpFNT;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Advanced;
-using SixLabors.ImageSharp.PixelFormats;
+using Image = NetVips.Image;
 
 namespace osu.Framework.IO.Stores
 {
@@ -163,26 +162,44 @@ namespace osu.Framework.IO.Stores
 
         protected virtual TextureUpload LoadCharacter(Character character)
         {
-            var page = GetPageImage(character.Page);
+            var pageUpload = GetPageImage(character.Page);
             LoadedGlyphCount++;
 
-            var image = new Image<Rgba32>(SixLabors.ImageSharp.Configuration.Default, character.Width, character.Height);
-            var source = page.Data;
+            using var pageImage = Image.NewFromMemoryCopy(pageUpload.Data, pageUpload.Width, pageUpload.Height, 4, Enums.BandFormat.Uchar);
+
+            if (pageImage == null)
+                return new TextureUpload();
 
             // the spritesheet may have unused pixels trimmed
-            int readableHeight = Math.Min(character.Height, page.Height - character.Y);
-            int readableWidth = Math.Min(character.Width, page.Width - character.X);
+            int readableWidth = Math.Max(0, Math.Min(character.Width, pageImage.Width - character.X));
+            int readableHeight = Math.Max(0, Math.Min(character.Height, pageImage.Height - character.Y));
 
-            for (int y = 0; y < character.Height; y++)
+            Image glyph;
+
+            if (readableWidth > 0 && readableHeight > 0)
             {
-                var pixelRowMemory = image.DangerousGetPixelRowMemory(y);
-                int readOffset = (character.Y + y) * page.Width + character.X;
+                glyph = pageImage.Crop(character.X, character.Y, readableWidth, readableHeight);
 
-                for (int x = 0; x < character.Width; x++)
-                    pixelRowMemory.Span[x] = x < readableWidth && y < readableHeight ? source[readOffset + x] : new Rgba32(255, 255, 255, 0);
+                if (readableWidth < character.Width || readableHeight < character.Height)
+                {
+                    var background = new double[] { 255, 255, 255, 0 };
+
+                    var padded = glyph.Embed(0, 0, character.Width, character.Height,
+                        extend: Enums.Extend.Background,
+                        background: background);
+
+                    glyph.Dispose();
+                    glyph = padded;
+                }
+            }
+            else
+            {
+                glyph = Image.Black(1, 1)
+                             .Linear(new[] { 0.0 }, new double[] { 255, 255, 255, 0 })
+                             .Embed(0, 0, character.Width, character.Height, extend: Enums.Extend.Copy);
             }
 
-            return new TextureUpload(image);
+            return new TextureUpload(glyph);
         }
 
         public Stream GetStream(string name) => throw new NotSupportedException();

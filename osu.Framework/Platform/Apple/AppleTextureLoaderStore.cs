@@ -4,13 +4,12 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using NetVips;
 using osu.Framework.Graphics.Textures;
 using osu.Framework.IO.Stores;
 using osu.Framework.Platform.Apple.Native;
 using osu.Framework.Platform.Apple.Native.Accelerate;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Advanced;
-using SixLabors.ImageSharp.PixelFormats;
+using Image = NetVips.Image;
 
 namespace osu.Framework.Platform.Apple
 {
@@ -21,8 +20,7 @@ namespace osu.Framework.Platform.Apple
         {
         }
 
-        protected unsafe Image<TPixel> ImageFromCGImage<TPixel>(CGImage cgImage)
-            where TPixel : unmanaged, IPixel<TPixel>
+        protected unsafe Image ImageFromCGImage(CGImage cgImage)
         {
             int width = (int)cgImage.Width;
             int height = (int)cgImage.Height;
@@ -41,29 +39,26 @@ namespace osu.Framework.Platform.Apple
 
             vImage_Buffer accImage = default;
 
-            // perform initial call to retrieve preferred alignment and bytes-per-row values for the given image dimensions.
+            // perform initial call to retrieve preferred alignment and bytes-per-row values for the given image dimensions.// allocate aligned memory region to contain image pixel data.
             nuint alignment = (nuint)vImage.Init(&accImage, (uint)height, (uint)width, 32, vImage_Flags.NoAllocate);
-            Debug.Assert(alignment > 0);
 
             // allocate aligned memory region to contain image pixel data.
-            nuint bytesPerRow = accImage.BytesPerRow;
-            nuint bytesCount = bytesPerRow * accImage.Height;
-            accImage.Data = (byte*)NativeMemory.AlignedAlloc(bytesCount, alignment);
+            nuint bytesCount = accImage.BytesPerRow * accImage.Height;
+            byte* dataPtr = (byte*)NativeMemory.AlignedAlloc(bytesCount, alignment);
+            accImage.Data = dataPtr;
 
             var result = vImage.InitWithCGImage(&accImage, &format, null, cgImage.Handle, vImage_Flags.NoAllocate);
             Debug.Assert(result == vImage_Error.NoError);
 
-            var image = new Image<TPixel>(width, height);
+            Image finalImage;
 
-            for (int i = 0; i < height; i++)
+            using (var rawImage = Image.NewFromMemory((IntPtr)dataPtr, bytesCount, width, height, 4, Enums.BandFormat.Uchar))
             {
-                var imageRow = image.DangerousGetPixelRowMemory(i);
-                var dataRow = new ReadOnlySpan<TPixel>(&accImage.Data[(int)bytesPerRow * i], width);
-                dataRow.CopyTo(imageRow.Span);
+                finalImage = rawImage.Copy(interpretation: Enums.Interpretation.Srgb);
             }
 
-            NativeMemory.AlignedFree(accImage.Data);
-            return image;
+            NativeMemory.AlignedFree(dataPtr);
+            return finalImage;
         }
     }
 }

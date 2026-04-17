@@ -23,8 +23,7 @@ using osu.Framework.Threading;
 using osu.Framework.Timing;
 using osuTK;
 using osuTK.Graphics;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
+using Image = NetVips.Image;
 using RectangleF = osu.Framework.Graphics.Primitives.RectangleF;
 using Texture = osu.Framework.Graphics.Textures.Texture;
 
@@ -325,12 +324,12 @@ namespace osu.Framework.Graphics.Rendering
         /// <summary>
         /// Returns an image containing the current content of the backbuffer, i.e. takes a screenshot.
         /// </summary>
-        protected internal abstract Image<Rgba32> TakeScreenshot();
+        protected internal abstract Image TakeScreenshot();
 
         /// <summary>
         /// Returns an image containing the content of a framebuffer.
         /// </summary>
-        protected internal virtual Image<Rgba32>? ExtractFrameBufferData(IFrameBuffer frameBuffer) => null;
+        protected internal virtual Image? ExtractFrameBufferData(IFrameBuffer frameBuffer) => null;
 
         /// <summary>
         /// Performs a once-off initialisation of this <see cref="Renderer"/>.
@@ -1223,8 +1222,8 @@ namespace osu.Framework.Graphics.Rendering
         void IRenderer.SetUniform<T>(IUniformWithValue<T> uniform) => SetUniform(uniform);
         void IRenderer.PushQuadBatch(IVertexBatch<TexturedVertex2D> quadBatch) => PushQuadBatch(quadBatch);
         void IRenderer.PopQuadBatch() => PopQuadBatch();
-        Image<Rgba32> IRenderer.TakeScreenshot() => TakeScreenshot();
-        Image<Rgba32>? IRenderer.ExtractFrameBufferData(IFrameBuffer frameBuffer) => ExtractFrameBufferData(frameBuffer);
+        Image IRenderer.TakeScreenshot() => TakeScreenshot();
+        Image? IRenderer.ExtractFrameBufferData(IFrameBuffer frameBuffer) => ExtractFrameBufferData(frameBuffer);
         IShaderPart IRenderer.CreateShaderPart(IShaderStore store, string name, byte[]? rawData, ShaderPartType partType) => CreateShaderPart(store, name, rawData, partType);
         IShader IRenderer.CreateShader(string name, IShaderPart[] parts) => CreateShader(name, parts, shaderCompilationStore);
 

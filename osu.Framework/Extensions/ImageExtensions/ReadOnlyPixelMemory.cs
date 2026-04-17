@@ -2,62 +2,42 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
-using System.Buffers;
 using System.Diagnostics;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
+using NetVips;
 
 namespace osu.Framework.Extensions.ImageExtensions
 {
-    public struct ReadOnlyPixelMemory<TPixel> : IDisposable
-        where TPixel : unmanaged, IPixel<TPixel>
+    public struct ReadOnlyPixelMemory : IDisposable
     {
-        private Image<TPixel>? image;
-        private Memory<TPixel>? memory;
-        private IMemoryOwner<TPixel>? owner;
+        private Image? image;
+        private byte[]? memory;
 
-        internal ReadOnlyPixelMemory(Image<TPixel> image)
+        internal ReadOnlyPixelMemory(Image image)
         {
             this.image = image;
-
-            if (image.DangerousTryGetSinglePixelMemory(out _))
-            {
-                owner = null;
-                memory = null;
-            }
-            else
-            {
-                owner = image.CreateContiguousMemory();
-                memory = owner.Memory;
-            }
+            this.memory = image.WriteToMemory<byte>();
         }
 
         /// <summary>
         /// The span of pixels.
         /// </summary>
-        public ReadOnlySpan<TPixel> Span
+        public ReadOnlySpan<byte> Span
         {
             get
             {
                 // Occurs when this struct has been default-initialised (the struct itself doesn't accept a nullable image).
-                if (image == null)
-                    return Span<TPixel>.Empty;
-
-                // If the image can be returned without extra contiguous memory allocation.
-                if (image.DangerousTryGetSinglePixelMemory(out var pixelMemory))
-                    return pixelMemory.Span;
+                if (image == null || memory == null)
+                    return ReadOnlySpan<byte>.Empty;
 
                 Debug.Assert(memory != null);
-                return memory.Value.Span;
+                return memory;
             }
         }
 
         public void Dispose()
         {
-            owner?.Dispose();
             image = null;
             memory = null;
-            owner = null;
         }
     }
 }

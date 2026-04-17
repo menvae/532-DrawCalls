@@ -6,8 +6,7 @@ using osu.Framework.Graphics.Shaders;
 using osu.Framework.Graphics.Textures;
 using osu.Framework.Platform;
 using osuTK.Graphics;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
+using Image = NetVips.Image;
 
 namespace osu.Framework.Graphics.Rendering.Dummy
 {
@@ -22,8 +21,8 @@ namespace osu.Framework.Graphics.Rendering.Dummy
         public override bool IsUvOriginTopLeft => true;
         public override bool IsClipSpaceYInverted => true;
 
-        protected internal override Image<Rgba32> TakeScreenshot()
-            => new Image<Rgba32>(1, 1);
+        protected internal override Image TakeScreenshot()
+            => Image.Black(1, 1);
 
         protected override IShaderPart CreateShaderPart(IShaderStore store, string name, byte[]? rawData, ShaderPartType partType)
             => new DummyShaderPart();

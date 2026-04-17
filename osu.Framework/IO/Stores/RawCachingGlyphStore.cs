@@ -1,4 +1,4 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+﻿// Copyright (c) ppy Pty Ltd contact@ppy.sh. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
@@ -8,14 +8,13 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using NetVips;
 using osu.Framework.Extensions;
 using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Graphics.Textures;
 using osu.Framework.Platform;
 using SharpFNT;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Advanced;
-using SixLabors.ImageSharp.PixelFormats;
+using Image = NetVips.Image;
 
 namespace osu.Framework.IO.Stores
 {
@@ -93,39 +92,32 @@ namespace osu.Framework.IO.Stores
                         {
                             if (testStream.Length == width * height)
                             {
-                                return pageLookup[page] = new PageInfo
-                                {
-                                    Size = new Size(width, height),
-                                    Filename = existing
-                                };
+                                return pageLookup[page] = new PageInfo { Width = width, Height = height, Filename = existing };
                             }
                         }
                     }
                 }
 
                 using (var convert = GetPageImage(page))
-                using (var buffer = SixLabors.ImageSharp.Configuration.Default.MemoryAllocator.Allocate<byte>(convert.Width * convert.Height))
                 {
-                    var output = buffer.Memory.Span;
-                    var source = convert.Data;
+                    int width = convert.Width;
+                    int height = convert.Height;
 
-                    for (int i = 0; i < output.Length; i++)
-                        output[i] = source[i].A;
+                    using var vipsImage = Image.NewFromMemoryCopy<byte>(convert.Data.ToArray(), width, height, 4, Enums.BandFormat.Uchar);
+                    using var alphaImage = vipsImage.ExtractBand(3);
+
+                    byte[] alphaData = alphaImage.WriteToMemory<byte>();
 
                     // ensure any stale cached versions are deleted.
                     foreach (string f in CacheStorage.GetFiles(string.Empty, $"{filenameMd5}*"))
                         CacheStorage.Delete(f);
 
-                    accessFilename += FormattableString.Invariant($"#{convert.Width}#{convert.Height}");
+                    accessFilename += FormattableString.Invariant($"#{width}#{height}");
 
                     using (var outStream = CacheStorage.CreateFileSafely(accessFilename))
-                        outStream.Write(buffer.Memory.Span);
+                        outStream.Write(alphaData);
 
-                    return pageLookup[page] = new PageInfo
-                    {
-                        Size = new Size(convert.Width, convert.Height),
-                        Filename = accessFilename
-                    };
+                    return pageLookup[page] = new PageInfo { Width = width, Height = height, Filename = accessFilename };
                 }
             }
         }
@@ -134,39 +126,56 @@ namespace osu.Framework.IO.Stores
         {
             Debug.Assert(CacheStorage != null);
 
-            int pageWidth = page.Size.Width;
-
+            int pageWidth = page.Width;
             int characterByteRegion = pageWidth * character.Height;
             byte[] readBuffer = ArrayPool<byte>.Shared.Rent(characterByteRegion);
 
             try
             {
-                var image = new Image<Rgba32>(SixLabors.ImageSharp.Configuration.Default, character.Width, character.Height);
-
                 if (!pageStreamHandles.TryGetValue(page.Filename, out var source))
                     source = pageStreamHandles[page.Filename] = CacheStorage.GetStream(page.Filename);
 
                 // consider to use System.IO.RandomAccess in .NET 6
-                source.Seek(pageWidth * character.Y, SeekOrigin.Begin);
+                source.Seek((long)pageWidth * character.Y, SeekOrigin.Begin);
                 source.ReadExactly(readBuffer.AsSpan(0, characterByteRegion));
 
                 // the spritesheet may have unused pixels trimmed
-                int readableHeight = Math.Min(character.Height, page.Size.Height - character.Y);
+                int readableHeight = Math.Min(character.Height, page.Height - character.Y);
                 int readableWidth = Math.Min(character.Width, pageWidth - character.X);
 
-                for (int y = 0; y < character.Height; y++)
-                {
-                    var pixelRowMemory = image.DangerousGetPixelRowMemory(y);
-                    var span = pixelRowMemory.Span;
-                    int readOffset = y * pageWidth + character.X;
+                using var alphaMask = Image.NewFromMemoryCopy<byte>(readBuffer, pageWidth, character.Height, 1, Enums.BandFormat.Uchar);
+                Image glyphAlpha;
 
-                    for (int x = 0; x < character.Width; x++)
+                if (readableWidth > 0 && readableHeight > 0)
+                {
+                    var croppedAlpha = alphaMask.Crop(character.X, 0, readableWidth, readableHeight);
+
+                    if (readableWidth < character.Width || readableHeight < character.Height)
                     {
-                        span[x] = new Rgba32(255, 255, 255, x < readableWidth && y < readableHeight ? readBuffer[readOffset + x] : (byte)0);
+                        var paddedAlpha = croppedAlpha.Embed(0, 0, character.Width, character.Height,
+                            extend: Enums.Extend.Background,
+                            background: new double[] { 0 });
+
+                        croppedAlpha.Dispose();
+                        glyphAlpha = paddedAlpha;
+                    }
+                    else
+                    {
+                        glyphAlpha = croppedAlpha;
                     }
                 }
+                else
+                {
+                    glyphAlpha = Image.Black(character.Width, character.Height);
+                }
 
-                return new TextureUpload(image);
+                using var whiteRgb = glyphAlpha.NewFromImage(new double[] { 255, 255, 255 });
+                using var rgba = whiteRgb.Bandjoin(glyphAlpha);
+
+                var finalImage = rgba.Copy(interpretation: Enums.Interpretation.Srgb);
+                glyphAlpha.Dispose();
+
+                return new TextureUpload(finalImage);
             }
             finally
             {
@@ -188,7 +197,8 @@ namespace osu.Framework.IO.Stores
         private record PageInfo
         {
             public string Filename { get; set; } = string.Empty;
-            public Size Size { get; set; }
+            public int Width { get; set; }
+            public int Height { get; set; }
         }
     }
 }

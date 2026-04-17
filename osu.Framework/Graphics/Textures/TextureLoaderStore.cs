@@ -9,8 +9,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using osu.Framework.IO.Stores;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
+using Image = NetVips.Image;
 
 namespace osu.Framework.Graphics.Textures
 {
@@ -38,7 +37,7 @@ namespace osu.Framework.Graphics.Textures
                 using (var stream = store.GetStream(name))
                 {
                     if (stream != null)
-                        return new TextureUpload(ImageFromStream<Rgba32>(stream));
+                        return new TextureUpload(ImageFromStream(stream));
                 }
             }
             catch
@@ -50,8 +49,8 @@ namespace osu.Framework.Graphics.Textures
 
         public Stream GetStream(string name) => store.GetStream(name);
 
-        protected virtual Image<TPixel> ImageFromStream<TPixel>(Stream stream) where TPixel : unmanaged, IPixel<TPixel>
-            => TextureUpload.LoadFromStream<TPixel>(stream);
+        protected virtual Image ImageFromStream(Stream stream)
+            => TextureUpload.LoadFromStream(stream);
 
         public IEnumerable<string> GetAvailableResources() => store.GetAvailableResources();
 

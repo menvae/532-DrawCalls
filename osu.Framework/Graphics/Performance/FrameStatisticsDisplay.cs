@@ -23,8 +23,6 @@ using osu.Framework.Graphics.Pooling;
 using osu.Framework.Graphics.Rendering;
 using osu.Framework.Platform;
 using osuTK;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
 using WindowState = osu.Framework.Platform.WindowState;
 
 namespace osu.Framework.Graphics.Performance
@@ -60,7 +58,7 @@ namespace osu.Framework.Graphics.Performance
         private readonly Container mainContainer;
         private readonly Container timeBarsContainer;
 
-        private readonly ArrayPool<Rgba32> uploadPool;
+        private readonly ArrayPool<byte> uploadPool;
 
         private readonly DrawablePool<GCBox> gcBoxPool;
 
@@ -114,7 +112,7 @@ namespace osu.Framework.Graphics.Performance
             }
         }
 
-        public FrameStatisticsDisplay(GameThread thread, ArrayPool<Rgba32> uploadPool)
+        public FrameStatisticsDisplay(GameThread thread, ArrayPool<byte> uploadPool)
         {
             Name = thread.Name;
 
@@ -254,29 +252,54 @@ namespace osu.Framework.Graphics.Performance
         private void load(IRenderer renderer)
         {
             //initialise background
-            var columnUpload = new ArrayPoolTextureUpload(1, HEIGHT);
-            var fullBackground = new Image<Rgba32>(WIDTH, HEIGHT);
+            byte[] columnData = new byte[1 * HEIGHT * 4];
+            addArea(null, null, HEIGHT, amount_ms_steps, columnData.AsSpan());
 
-            addArea(null, null, HEIGHT, amount_ms_steps, columnUpload);
+            byte[] fullData = new byte[WIDTH * HEIGHT * 4];
 
             for (int i = 0; i < HEIGHT; i++)
             {
-                for (int k = 0; k < WIDTH; k++)
-                    fullBackground[k, i] = columnUpload.RawData[i];
-            }
+                int srcOffset = i * 4;
+                byte r = columnData[srcOffset];
+                byte g = columnData[srcOffset + 1];
+                byte b = columnData[srcOffset + 2];
+                byte a = columnData[srcOffset + 3];
 
-            addArea(null, null, HEIGHT, amount_count_steps, columnUpload);
+                for (int k = 0; k < WIDTH; k++)
+                {
+                    int destOffset = (i * WIDTH + k) * 4;
+                    fullData[destOffset] = r;
+                    fullData[destOffset + 1] = g;
+                    fullData[destOffset + 2] = b;
+                    fullData[destOffset + 3] = a;
+                }
+            }
 
             if (counterBarBackground != null)
             {
+                byte[] counterColumnData = new byte[1 * HEIGHT * 4];
+                addArea(null, null, HEIGHT, amount_count_steps, counterColumnData.AsSpan());
+
                 counterBarBackground.Texture = renderer.CreateTexture(1, HEIGHT, true);
-                counterBarBackground.Texture.SetData(columnUpload);
+
+                counterBarBackground.Texture.SetData(new TextureUpload(counterColumnData)
+                {
+                    Bounds = new RectangleI(0, 0, 1, HEIGHT)
+                });
             }
 
             Schedule(() =>
             {
                 foreach (var t in timeBars)
-                    t.Sprite.Texture.SetData(new TextureUpload(fullBackground.Clone()));
+                {
+                    byte[] copy = new byte[fullData.Length];
+                    Array.Copy(fullData, copy, fullData.Length);
+
+                    t.Sprite.Texture.SetData(new TextureUpload(copy)
+                    {
+                        Bounds = new RectangleI(0, 0, WIDTH, HEIGHT)
+                    });
+                }
             });
         }
 
@@ -324,8 +347,6 @@ namespace osu.Framework.Graphics.Performance
                 running = value;
 
                 frameTimeDisplay.Counting = running;
-
-                // clear all pending frames on state change.
                 monitor.PendingFrames.Clear();
             }
         }
@@ -375,24 +396,35 @@ namespace osu.Framework.Graphics.Performance
         private void applyFrameTime(FrameStatistics frame)
         {
             TimeBar timeBar = timeBars[timeBarIndex];
-            var upload = new ArrayPoolTextureUpload(1, HEIGHT, uploadPool)
-            {
-                Bounds = new RectangleI(timeBarX, 0, 1, HEIGHT)
-            };
+
+            if (!timeBar.IsPresent) return;
+
+            byte[] buffer = uploadPool.Rent(1 * HEIGHT * 4);
+
+            Span<byte> span = buffer.AsSpan(0, HEIGHT * 4);
+            span.Clear();
 
             int currentHeight = HEIGHT;
 
             for (int i = 0; i < FrameStatistics.NUM_PERFORMANCE_COLLECTION_TYPES; i++)
-                currentHeight = addArea(frame, (PerformanceCollectionType)i, currentHeight, amount_ms_steps, upload);
-            addArea(frame, null, currentHeight, amount_ms_steps, upload);
+                currentHeight = addArea(frame, (PerformanceCollectionType)i, currentHeight, amount_ms_steps, span);
+
+            addArea(frame, null, currentHeight, amount_ms_steps, span);
+
+            var upload = new TextureUpload(buffer, uploadPool)
+            {
+                Bounds = new RectangleI(0, 0, 1, HEIGHT)
+            };
 
             timeBar.Sprite.Texture.SetData(upload);
 
-            timeBars[timeBarIndex].X = WIDTH - timeBarX;
+            timeBar.X = WIDTH - timeBarX;
             timeBars[(timeBarIndex + 1) % timeBars.Length].X = -timeBarX;
             currentX = (currentX + 1) % (timeBars.Length * WIDTH);
 
-            foreach (Drawable e in timeBars[(timeBarIndex + 1) % timeBars.Length])
+            var nextBar = timeBars[(timeBarIndex + 1) % timeBars.Length];
+
+            foreach (Drawable e in nextBar)
             {
                 if (e is GCBox && e.DrawPosition.X <= timeBarX)
                     e.Expire();
@@ -477,7 +509,7 @@ namespace osu.Framework.Graphics.Performance
             }
         }
 
-        private int addArea(FrameStatistics frame, PerformanceCollectionType? frameTimeType, int currentHeight, int amountSteps, ArrayPoolTextureUpload columnUpload)
+        private int addArea(FrameStatistics frame, PerformanceCollectionType? frameTimeType, int currentHeight, int amountSteps, Span<byte> imagePixels)
         {
             int drawHeight;
 
@@ -497,7 +529,7 @@ namespace osu.Framework.Graphics.Performance
             {
                 if (drawHeight-- == 0) break;
 
-                bool acceptableRange = (float)currentHeight / HEIGHT > 1 - monitor.FrameAimTime / visible_ms_range;
+                bool acceptableRange = (float)i / HEIGHT > 1 - monitor.FrameAimTime / visible_ms_range;
 
                 float brightnessAdjust = 1;
 
@@ -509,7 +541,12 @@ namespace osu.Framework.Graphics.Performance
                 else if (acceptableRange)
                     brightnessAdjust *= 0.8f;
 
-                columnUpload.RawData[i] = new Rgba32(col.R * brightnessAdjust, col.G * brightnessAdjust, col.B * brightnessAdjust, col.A);
+                int offset = i * 4;
+
+                imagePixels[offset] = (byte)Math.Clamp((int)(col.R * brightnessAdjust * 255f), 0, 255);
+                imagePixels[offset + 1] = (byte)Math.Clamp((int)(col.G * brightnessAdjust * 255f), 0, 255);
+                imagePixels[offset + 2] = (byte)Math.Clamp((int)(col.B * brightnessAdjust * 255f), 0, 255);
+                imagePixels[offset + 3] = (byte)Math.Clamp((int)(col.A * 255f), 0, 255);
 
                 currentHeight--;
             }

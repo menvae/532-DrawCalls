@@ -5,8 +5,9 @@ using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
-using SixLabors.ImageSharp;
+using osu.Framework.Extensions.ImageExtensions;
 using SixLabors.ImageSharp.Formats.Bmp;
+using Image = NetVips.Image;
 
 namespace osu.Framework.Platform.Windows
 {
@@ -75,7 +76,7 @@ namespace osu.Framework.Platform.Windows
             setClipboard(source, bytes, cf_unicodetext);
         }
 
-        public override Image<TPixel>? GetImage<TPixel>()
+        public override Image? GetImage()
         {
             return getClipboard(cf_dib, bytes =>
             {
@@ -84,16 +85,18 @@ namespace osu.Framework.Platform.Windows
                 bmp_header_field.CopyTo(buff, 0);
                 bytes.CopyTo(buff, bitmap_file_header_length);
 
-                return Image.Load<TPixel>(buff);
+                return Image.NewFromBuffer(buff);
             });
         }
 
         public override bool SetImage(Image image)
         {
+            var img = image.ToImageSharp();
+
             using (var stream = new MemoryStream())
             {
-                var encoder = image.Configuration.ImageFormatsManager.GetEncoder(BmpFormat.Instance);
-                image.Save(stream, encoder);
+                var encoder = img.Configuration.ImageFormatsManager.GetEncoder(BmpFormat.Instance);
+                img.Save(stream, encoder);
 
                 int bitmapDataLength = (int)stream.Length - bitmap_file_header_length;
                 IntPtr unmanagedPointer = Marshal.AllocHGlobal(bitmapDataLength);

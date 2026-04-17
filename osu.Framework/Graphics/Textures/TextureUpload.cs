@@ -4,17 +4,17 @@
 #nullable disable
 
 using System;
+using System.Buffers;
 using System.IO;
-using System.Runtime.InteropServices;
 using osu.Framework.Extensions.ImageExtensions;
 using osu.Framework.Graphics.Primitives;
 using osu.Framework.Graphics.Rendering;
 using osu.Framework.Logging;
 using osuTK.Graphics.ES30;
-using SixLabors.ImageSharp;
+using NetVips;
 using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
 using StbiSharp;
+using Image = NetVips.Image;
 
 namespace osu.Framework.Graphics.Textures
 {
@@ -39,27 +39,69 @@ namespace osu.Framework.Graphics.Textures
         /// </summary>
         public RectangleI Bounds { get; set; }
 
-        public ReadOnlySpan<Rgba32> Data => pixelMemory.Span;
+        public ReadOnlySpan<byte> Data => rawData ?? pixelMemory.Span;
 
-        public int Width => image?.Width ?? 0;
-
-        public int Height => image?.Height ?? 0;
+        public int Width { get; private set; }
+        public int Height { get; private set; }
 
         /// <summary>
         /// The backing texture. A handle is kept to avoid early GC.
         /// </summary>
-        private readonly Image<Rgba32> image;
+        private readonly Image image;
 
-        private ReadOnlyPixelMemory<Rgba32> pixelMemory;
+        private ReadOnlyPixelMemory pixelMemory;
+
+        // For the raw bytes contructor
+        private readonly byte[] rawData;
+        private readonly ArrayPool<byte> arrayPool;
+
+        public TextureUpload(byte[] data, ArrayPool<byte> pool = null)
+        {
+            rawData = data;
+            arrayPool = pool;
+        }
 
         /// <summary>
         /// Create an upload from a <see cref="TextureUpload"/>. This is the preferred method.
         /// </summary>
         /// <param name="image">The texture to upload.</param>
-        public TextureUpload(Image<Rgba32> image)
+        public TextureUpload(Image image)
         {
-            this.image = image;
-            pixelMemory = image.CreateReadOnlyPixelMemory();
+            Image current = image;
+
+            try
+            {
+                if (current.Interpretation != Enums.Interpretation.Srgb)
+                {
+                    var next = current.Colourspace(Enums.Interpretation.Srgb);
+                    if (!current.Equals(image)) current.Dispose();
+                    current = next;
+                }
+
+                if (!current.HasAlpha() || current.Bands < 4)
+                {
+                    var next = current.AddAlpha();
+                    if (!current.Equals(image)) current.Dispose();
+                    current = next;
+                }
+
+                if (current.Format != Enums.BandFormat.Uchar)
+                {
+                    var next = current.Cast(Enums.BandFormat.Uchar);
+                    if (!current.Equals(image)) current.Dispose();
+                    current = next;
+                }
+
+                this.image = current;
+                Width = this.image.Width;
+                Height = this.image.Height;
+                pixelMemory = this.image.CreateReadOnlyPixelMemory();
+            }
+            catch
+            {
+                if (!current.Equals(image)) current?.Dispose();
+                throw;
+            }
         }
 
         /// <summary>
@@ -69,46 +111,81 @@ namespace osu.Framework.Graphics.Textures
         /// </summary>
         /// <param name="stream">The image content.</param>
         public TextureUpload(Stream stream)
-            : this(LoadFromStream<Rgba32>(stream))
+            : this(LoadFromStream(stream))
         {
         }
 
         private static bool stbiNotFound;
 
-        internal static Image<TPixel> LoadFromStream<TPixel>(Stream stream) where TPixel : unmanaged, IPixel<TPixel>
+        internal static Image LoadFromStream(Stream stream)
         {
-            if (stbiNotFound)
-                return Image.Load<TPixel>(stream);
-
             long initialPos = stream.Position;
+            bool isWebP = TextureUpload.isWebP(stream);
+            Image result = null;
 
             try
             {
-                using (var buffer = SixLabors.ImageSharp.Configuration.Default.MemoryAllocator.Allocate<byte>((int)stream.Length))
-                {
-                    stream.ReadExactly(buffer.Memory.Span);
-
-                    using (var stbiImage = Stbi.LoadFromMemory(buffer.Memory.Span, 4))
-                        return Image.LoadPixelData(MemoryMarshal.Cast<byte, TPixel>(stbiImage.Data), stbiImage.Width, stbiImage.Height);
-                }
+                result = Image.NewFromStream(stream, access: Enums.Access.Random);
             }
             catch (Exception e)
             {
-                if (e is DllNotFoundException)
-                    stbiNotFound = true;
-
-                Logger.Log($"Texture could not be loaded via STB; falling back to ImageSharp: {e.Message}");
+                Logger.Log($"Texture could not be loaded via NetVips; trying STB: {e.Message}");
                 stream.Position = initialPos;
-
-                bool isWebP = TextureUpload.isWebP(stream);
-                var image = Image.Load<TPixel>(stream);
-
-                // a stupid fix for heavily compressed webp images with visible artifacts but it's efficient and works
-                if (isWebP)
-                    image.Mutate(x => x.BoxBlur(0));
-
-                return image;
             }
+
+            if (result == null && !stbiNotFound)
+            {
+                try
+                {
+                    using (var buffer = SixLabors.ImageSharp.Configuration.Default.MemoryAllocator.Allocate<byte>((int)stream.Length))
+                    {
+                        stream.ReadExactly(buffer.Memory.Span);
+
+                        using (var stbiImage = Stbi.LoadFromMemory(buffer.Memory.Span, 4))
+                        {
+                            result = Image.NewFromMemoryCopy(
+                                stbiImage.Data,
+                                stbiImage.Width,
+                                stbiImage.Height,
+                                4,
+                                Enums.BandFormat.Uchar
+                            ).Copy(interpretation: Enums.Interpretation.Srgb);
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    if (e is DllNotFoundException) stbiNotFound = true;
+                    Logger.Log($"Texture could not be loaded via STB; falling back to ImageSharp: {e.Message}");
+                    stream.Position = initialPos;
+                }
+            }
+
+            if (result == null)
+            {
+                try
+                {
+                    using (var img = SixLabors.ImageSharp.Image.Load<Rgba32>(stream))
+                        result = img.ToVips();
+                }
+                catch (Exception e)
+                {
+                    Logger.Log($"Texture could not be loaded via ImageSharp: {e.Message}");
+                    stream.Position = initialPos;
+                }
+            }
+
+            if (isWebP)
+            {
+                // a stupid fix for heavily compressed webp images with visible artifacts but it's efficient and works
+                // Note: NetVips does not have a built-in BoxBlur method, so we'll make do of gauss blur
+                // TODO: implement BoxBlur later for this- or don't if custom BoxBlur impl is slower than small sigma gauss.
+                var fixedImage = result?.Gaussblur(0.01);
+                result?.Dispose();
+                result = fixedImage;
+            }
+
+            return result;
         }
 
         private static bool isWebP(Stream stream)
@@ -123,9 +200,9 @@ namespace osu.Framework.Graphics.Textures
             stream.Position = initialPos;
 
             return header[0] == 'R' && header[1] == 'I' &&
-                header[2] == 'F' && header[3] == 'F' &&
-                header[8] == 'W' && header[9] == 'E' &&
-                header[10] == 'B' && header[11] == 'P';
+                   header[2] == 'F' && header[3] == 'F' &&
+                   header[8] == 'W' && header[9] == 'E' &&
+                   header[10] == 'B' && header[11] == 'P';
         }
 
         /// <summary>
@@ -151,7 +228,11 @@ namespace osu.Framework.Graphics.Textures
                 return;
 
             image?.Dispose();
-            pixelMemory.Dispose();
+            if (image != null)
+                pixelMemory.Dispose();
+
+            if (rawData != null && arrayPool != null)
+                arrayPool.Return(rawData);
 
             disposed = true;
         }

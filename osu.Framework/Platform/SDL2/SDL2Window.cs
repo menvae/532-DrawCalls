@@ -13,9 +13,7 @@ using osu.Framework.Extensions.ImageExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Logging;
 using osu.Framework.Threading;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using Image = SixLabors.ImageSharp.Image;
+using Image = NetVips.Image;
 using Point = System.Drawing.Point;
 using static SDL2.SDL;
 
@@ -460,18 +458,17 @@ namespace osu.Framework.Platform.SDL2
         /// Attempts to set the window's icon to the specified image.
         /// </summary>
         /// <param name="image">An <see cref="Image{Rgba32}"/> to set as the window icon.</param>
-        private unsafe void setSDLIcon(Image<Rgba32> image)
+        private unsafe void setSDLIcon(Image image)
         {
             var pixelMemory = image.CreateReadOnlyPixelMemory();
-            var imageSize = image.Size;
 
             ScheduleCommand(() =>
             {
                 var pixelSpan = pixelMemory.Span;
 
                 IntPtr surface;
-                fixed (Rgba32* ptr = pixelSpan)
-                    surface = SDL_CreateRGBSurfaceFrom(new IntPtr(ptr), imageSize.Width, imageSize.Height, 32, imageSize.Width * 4, 0xff, 0xff00, 0xff0000, 0xff000000);
+                fixed (byte* ptr = pixelSpan)
+                    surface = SDL_CreateRGBSurfaceFrom(new IntPtr(ptr), image.Width, image.Height, 32, image.Width * 4, 0xff, 0xff00, 0xff0000, 0xff000000);
 
                 SDL_SetWindowIcon(SDLWindowHandle, surface);
                 SDL_FreeSurface(surface);
@@ -623,7 +620,7 @@ namespace osu.Framework.Platform.SDL2
 
                 try
                 {
-                    SetIconFromImage(Image.Load<Rgba32>(ms.GetBuffer()));
+                    SetIconFromImage(Image.NewFromBuffer(ms.GetBuffer()));
                 }
                 catch
                 {
@@ -640,10 +637,10 @@ namespace osu.Framework.Platform.SDL2
             if (bytes == null)
                 return;
 
-            SetIconFromImage(Image.Load<Rgba32>(bytes));
+            SetIconFromImage(Image.NewFromBuffer(bytes));
         }
 
-        internal virtual void SetIconFromImage(Image<Rgba32> iconImage) => setSDLIcon(iconImage);
+        internal virtual void SetIconFromImage(Image iconImage) => setSDLIcon(iconImage);
 
         #region Events
 

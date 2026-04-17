@@ -19,9 +19,8 @@ using osu.Framework.Graphics.Veldrid.Textures;
 using osu.Framework.Graphics.Veldrid.Vertices;
 using osuTK;
 using osuTK.Graphics;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
 using Veldrid;
+using Image = NetVips.Image;
 using PrimitiveTopology = osu.Framework.Graphics.Rendering.PrimitiveTopology;
 
 namespace osu.Framework.Graphics.Veldrid
@@ -220,19 +219,19 @@ namespace osu.Framework.Graphics.Veldrid
         public bool IsFrameBufferBound(IFrameBuffer frameBuffer)
             => FrameBuffer == frameBuffer;
 
-        protected internal override Image<Rgba32> TakeScreenshot()
+        protected internal override Image TakeScreenshot()
             => veldridDevice.TakeScreenshot();
 
-        protected internal override Image<Rgba32>? ExtractFrameBufferData(IFrameBuffer frameBuffer)
+        protected internal override Image? ExtractFrameBufferData(IFrameBuffer frameBuffer)
             => ExtractTexture((VeldridTexture)frameBuffer.Texture.NativeTexture);
 
-        protected internal Image<Rgba32>? ExtractTexture(VeldridTexture texture)
+        protected internal Image? ExtractTexture(VeldridTexture texture)
         {
             var resource = texture.GetResourceList().FirstOrDefault();
             if (resource == null)
                 return null;
 
-            return veldridDevice.ExtractTexture<Rgba32>(resource.Texture);
+            return veldridDevice.ExtractTexture(resource.Texture);
         }
 
         /// <summary>

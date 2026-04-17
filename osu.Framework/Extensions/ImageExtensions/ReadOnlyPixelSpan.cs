@@ -2,39 +2,26 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
-using System.Buffers;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
+using NetVips;
 
 namespace osu.Framework.Extensions.ImageExtensions
 {
-    public readonly ref struct ReadOnlyPixelSpan<TPixel>
-        where TPixel : unmanaged, IPixel<TPixel>
+    public readonly ref struct ReadOnlyPixelSpan
     {
         /// <summary>
         /// The span of pixels.
         /// </summary>
-        public readonly ReadOnlySpan<TPixel> Span;
+        public readonly ReadOnlySpan<byte> Span;
 
-        private readonly IMemoryOwner<TPixel>? owner;
-
-        internal ReadOnlyPixelSpan(Image<TPixel> image)
+        internal ReadOnlyPixelSpan(Image image)
         {
-            if (image.DangerousTryGetSinglePixelMemory(out var memory))
-            {
-                owner = null;
-                Span = memory.Span;
-            }
-            else
-            {
-                owner = image.CreateContiguousMemory();
-                Span = owner.Memory.Span;
-            }
+            Span = image.WriteToMemory<byte>();
         }
 
         public void Dispose()
         {
-            owner?.Dispose();
+            // The byte array is (hopefully) managed by GC.
+            // This is only left for code compatibility
         }
     }
 }

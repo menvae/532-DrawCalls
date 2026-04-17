@@ -1,8 +1,7 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
+using Image = NetVips.Image;
 
 namespace osu.Framework.Platform
 {
@@ -25,8 +24,7 @@ namespace osu.Framework.Platform
         /// <summary>
         /// Retrieve an image from the clipboard.
         /// </summary>
-        public abstract Image<TPixel>? GetImage<TPixel>()
-            where TPixel : unmanaged, IPixel<TPixel>;
+        public abstract Image? GetImage();
 
         /// <summary>
         /// Copy the image to the clipboard.

@@ -38,13 +38,13 @@ using osu.Framework.Statistics;
 using osu.Framework.Threading;
 using osu.Framework.Timing;
 using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
 using osu.Framework.Graphics.Textures;
 using osu.Framework.Graphics.Veldrid;
 using osu.Framework.Graphics.Video;
 using osu.Framework.IO.Serialization;
 using osu.Framework.IO.Stores;
 using osu.Framework.Localisation;
+using Image = NetVips.Image;
 using Rectangle = System.Drawing.Rectangle;
 using Size = System.Drawing.Size;
 
@@ -591,13 +591,13 @@ namespace osu.Framework.Platform
         /// Takes a screenshot of the game. The returned <see cref="Image{TPixel}"/> must be disposed by the caller when applicable.
         /// </summary>
         /// <returns>The screenshot as an <see cref="Image{TPixel}"/>.</returns>
-        public async Task<Image<Rgba32>> TakeScreenshotAsync()
+        public async Task<Image> TakeScreenshotAsync()
         {
             if (Window == null) throw new InvalidOperationException($"{nameof(Window)} has not been set!");
 
             using (var completionEvent = new ManualResetEventSlim(false))
             {
-                Image<Rgba32> image = null;
+                Image image = null;
 
                 DrawThread.Scheduler.Add(() =>
                 {

@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Numerics;
+using NetVips;
 using osu.Framework.Development;
 using osu.Framework.Extensions.ImageExtensions;
 using osu.Framework.Graphics.Primitives;
@@ -14,9 +14,8 @@ using osu.Framework.Graphics.Textures;
 using osu.Framework.Logging;
 using osu.Framework.Platform;
 using osuTK.Graphics;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
 using Veldrid;
+using Image = NetVips.Image;
 using PixelFormat = Veldrid.PixelFormat;
 using Texture = Veldrid.Texture;
 
@@ -500,17 +499,15 @@ namespace osu.Framework.Graphics.Veldrid.Textures
             if (initialisationColour == null)
                 return;
 
-            var rgbaColour = new Rgba32(new Vector4(initialisationColour.Value.R, initialisationColour.Value.G, initialisationColour.Value.B, initialisationColour.Value.A));
-
             // it is faster to initialise without a background specification if transparent black is all that's required.
             using var image = initialisationColour == null
-                ? new Image<Rgba32>(width, height)
-                : new Image<Rgba32>(width, height, rgbaColour);
+                ? Image.Black(width, height)
+                : (Image.Black(width, height) + new double[] { 255, 128, 0, 255 }).Cast(Enums.BandFormat.Uchar);
 
             using (var pixels = image.CreateReadOnlyPixelSpan())
             {
-                updateMemoryUsage(level, (long)width * height * sizeof(Rgba32));
-                Renderer.UpdateTexture(texture, 0, 0, width, height, level, pixels.Span);
+                updateMemoryUsage(level, (long)width * height * 4);
+                Renderer.UpdateTexture<byte>(texture, 0, 0, width, height, level, image.WriteToMemory<byte>());
             }
         }
 

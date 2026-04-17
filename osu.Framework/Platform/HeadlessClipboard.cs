@@ -1,7 +1,7 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using SixLabors.ImageSharp;
+using Image = NetVips.Image;
 
 namespace osu.Framework.Platform
 {
@@ -24,7 +24,7 @@ namespace osu.Framework.Platform
             clipboardText = text;
         }
 
-        public override Image<TPixel>? GetImage<TPixel>() => clipboardImage?.CloneAs<TPixel>();
+        public override Image? GetImage() => clipboardImage?.Copy();
 
         public override bool SetImage(Image image)
         {

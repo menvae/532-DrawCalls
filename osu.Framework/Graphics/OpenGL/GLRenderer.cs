@@ -2,10 +2,12 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Runtime.InteropServices;
+using NetVips;
 using osu.Framework.Extensions.EnumExtensions;
 using osu.Framework.Graphics.OpenGL.Buffers;
 using osu.Framework.Graphics.OpenGL.Textures;
@@ -21,11 +23,9 @@ using osu.Framework.Statistics;
 using osuTK;
 using osuTK.Graphics.ES30;
 using osuTK.Graphics;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Memory;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
-using Image = SixLabors.ImageSharp.Image;
+// using SixLabors.ImageSharp.Memory;
+// using SixLabors.ImageSharp.PixelFormats;
+using Image = NetVips.Image;
 using GL4 = osuTK.Graphics.OpenGL;
 
 namespace osu.Framework.Graphics.OpenGL
@@ -363,32 +363,48 @@ namespace osu.Framework.Graphics.OpenGL
                 GL.Disable(EnableCap.StencilTest);
         }
 
-        protected internal override Image<Rgba32> TakeScreenshot()
+        protected internal override Image TakeScreenshot()
         {
             var size = ((IGraphicsSurface)openGLSurface).GetDrawableSize();
-            var data = MemoryAllocator.Default.Allocate<Rgba32>(size.Width * size.Height);
+            int byteLength = size.Width * size.Height * 4;
 
-            GL.ReadPixels(0, 0, size.Width, size.Height, PixelFormat.Rgba, PixelType.UnsignedByte, ref MemoryMarshal.GetReference(data.Memory.Span));
+            byte[] buffer = ArrayPool<byte>.Shared.Rent(byteLength);
+            Span<byte> span = buffer.AsSpan(0, byteLength);
 
-            var image = Image.LoadPixelData<Rgba32>(data.Memory.Span, size.Width, size.Height);
-            image.Mutate(i => i.Flip(FlipMode.Vertical));
-            return image;
+            try
+            {
+                GL.ReadPixels(0, 0, size.Width, size.Height, PixelFormat.Rgba, PixelType.UnsignedByte, ref MemoryMarshal.GetReference(span));
+                var image = Image.NewFromMemoryCopy<byte>(span, size.Width, size.Height, 4, Enums.BandFormat.Uchar);
+
+                return image.Flip(Enums.Direction.Vertical);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
         }
 
-        protected internal override Image<Rgba32> ExtractFrameBufferData(IFrameBuffer frameBuffer)
+        protected internal override Image ExtractFrameBufferData(IFrameBuffer frameBuffer)
         {
             int width = frameBuffer.Texture.Width;
             int height = frameBuffer.Texture.Height;
+            int byteLength = width * height * 4;
 
-            var data = MemoryAllocator.Default.Allocate<Rgba32>(width * height);
+            byte[] buffer = ArrayPool<byte>.Shared.Rent(byteLength);
+            Span<byte> span = buffer.AsSpan(0, byteLength);
 
-            frameBuffer.Bind();
-            GL.ReadPixels(0, 0, width, height, PixelFormat.Rgba, PixelType.UnsignedByte, ref MemoryMarshal.GetReference(data.Memory.Span));
-            frameBuffer.Unbind();
+            try
+            {
+                frameBuffer.Bind();
+                GL.ReadPixels(0, 0, width, height, PixelFormat.Rgba, PixelType.UnsignedByte, ref MemoryMarshal.GetReference(span));
+                frameBuffer.Unbind();
 
-            var image = Image.LoadPixelData<Rgba32>(data.Memory.Span, width, height);
-
-            return image;
+                return Image.NewFromMemoryCopy<byte>(span, width, height, 4, Enums.BandFormat.Uchar);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
         }
 
         protected override IShaderPart CreateShaderPart(IShaderStore store, string name, byte[]? rawData, ShaderPartType partType)
